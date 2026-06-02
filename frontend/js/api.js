@@ -1,5 +1,5 @@
 // Địa chỉ Backend
-const API_URL = "http://localhost:8000/api";
+const API_URL = "https://homestay-project-5svy.onrender.com/api";
 //Hàm tiện ích
 //Lấy token từ localStorage
 function getToken(){
