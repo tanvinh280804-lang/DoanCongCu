@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chi tiết phòng - Homestay Manager</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <a href="index.html" class="navbar-brand">Homestay <span>Manager</span></a>
+        <div class="navbar-links" id="nav-auth"></div>
+    </nav>
+
+    <div class="container" style="max-width:900px;">
+
+        <!-- LOADING -->
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Đang tải thông tin phòng...</p>
+        </div>
+
+        <!-- NỘI DUNG PHÒNG -->
+        <div id="room-detail" style="display:none;">
+
+            <!-- ẢNH PHÒNG -->
+            <div style="border-radius:12px; overflow:hidden; margin-bottom:24px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+                <img id="room-image" src="" alt="" 
+                    style="width:100%; height:400px; object-fit:cover;"
+                    onerror="this.src='https://placehold.co/900x400?text=No+Image'"
+                >
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 340px; gap:24px; align-items:start;">
+
+                <!-- THÔNG TIN CHI TIẾT -->
+                <div>
+                    <div style="background:white; border-radius:12px; padding:32px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom:24px;">
+                        <span id="room-badge" class="room-badge"></span>
+                        <h1 id="room-name" style="font-size:2rem; font-weight:800; margin-bottom:12px;"></h1>
+                        <p id="room-desc" style="color:#64748b; line-height:1.8; font-size:1rem;"></p>
+                    </div>
+
+                    <!-- TIỆN NGHI -->
+                    <div style="background:white; border-radius:12px; padding:32px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+                        <h3 style="font-weight:700; margin-bottom:16px;">Thông tin phòng</h3>
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <span style="font-size:1.5rem;">👥</span>
+                                <div>
+                                    <div style="font-weight:600;">Sức chứa</div>
+                                    <div id="room-capacity" style="color:#64748b;"></div>
+                                </div>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <span style="font-size:1.5rem;">🛏️</span>
+                                <div>
+                                    <div style="font-weight:600;">Loại phòng</div>
+                                    <div style="color:#64748b;">Phòng nghỉ</div>
+                                </div>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <span style="font-size:1.5rem;">🌊</span>
+                                <div>
+                                    <div style="font-weight:600;">View</div>
+                                    <div style="color:#64748b;">Hướng biển</div>
+                                </div>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <span style="font-size:1.5rem;">📅</span>
+                                <div>
+                                    <div style="font-weight:600;">Đặt phòng</div>
+                                    <div style="color:#64748b;">Linh hoạt</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CARD ĐẶT PHÒNG -->
+                <div style="background:white; border-radius:12px; padding:24px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); position:sticky; top:80px;">
+                    <div id="room-price" style="font-size:1.8rem; font-weight:800; color:#2563eb; margin-bottom:4px;"></div>
+                    <div style="color:#64748b; margin-bottom:24px;">mỗi đêm</div>
+
+                    <hr style="margin-bottom:24px; border:1px solid #e2e8f0;">
+
+                    <div class="form-group">
+                        <label>Check-in</label>
+                        <input type="date" id="quick-checkin" onchange="quickCalc()">
+                    </div>
+                    <div class="form-group">
+                        <label>Check-out</label>
+                        <input type="date" id="quick-checkout" onchange="quickCalc()">
+                    </div>
+
+                    <!-- TỔNG TIỀN NHANH -->
+                    <div id="quick-summary" style="
+                        background:#eff6ff;
+                        border-radius:8px;
+                        padding:16px;
+                        margin-bottom:16px;
+                        display:none;
+                    ">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                            <span style="color:#64748b;" id="quick-nights"></span>
+                            <span id="quick-total" style="font-weight:700; color:#2563eb;"></span>
+                        </div>
+                    </div>
+
+                    <div id="book-btn-container"></div>
+
+                    <a href="index.html" style="
+                        display:block;
+                        text-align:center;
+                        margin-top:12px;
+                        color:#64748b;
+                        text-decoration:none;
+                        font-size:0.9rem;
+                    ">← Quay lại danh sách</a>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- PHÒNG KHÔNG TỒN TẠI -->
+        <div id="not-found" style="text-align:center; padding:60px; display:none;">
+            <div style="font-size:4rem; margin-bottom:16px;">🏠</div>
+            <h2 style="font-weight:700; margin-bottom:8px;">Không tìm thấy phòng</h2>
+            <p style="color:#64748b; margin-bottom:24px;">Phòng này không tồn tại hoặc đã bị xóa</p>
+            <a href="index.html" class="btn btn-primary">Xem các phòng khác</a>
+        </div>
+
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        updateNavbar();
+
+        let currentRoom = null;
+
+        async function loadRoom() {
+            const roomId = getUrlParam("room_id");
+            if (!roomId) {
+                window.location.href = "index.html";
+                return;
+            }
+
+            const room = await apiGetRoom(roomId);
+
+            document.getElementById("loading").style.display = "none";
+
+            if (!room || room.detail) {
+                document.getElementById("not-found").style.display = "block";
+                return;
+            }
+
+            currentRoom = room;
+            renderRoom(room);
+        }
+
+        function renderRoom(room) {
+            // Ảnh
+            document.getElementById("room-image").src = 
+                room.image_url || "https://placehold.co/900x400?text=No+Image";
+            document.getElementById("room-image").alt = room.name;
+
+            // Badge trạng thái
+            const badge = document.getElementById("room-badge");
+            badge.textContent = room.is_available ? "✅ Còn phòng" : "❌ Hết phòng";
+            badge.className = `room-badge ${room.is_available ? "badge-available" : "badge-unavailable"}`;
+
+            // Thông tin
+            document.getElementById("room-name").textContent = room.name;
+            document.getElementById("room-desc").textContent = 
+                room.description || "Phòng nghỉ thoải mái, đầy đủ tiện nghi.";
+            document.getElementById("room-price").textContent = formatPrice(room.price);
+            document.getElementById("room-capacity").textContent = room.capacity + " người";
+
+            // Set ngày tối thiểu
+            const today = new Date().toISOString().split("T")[0];
+            document.getElementById("quick-checkin").min = today;
+            document.getElementById("quick-checkout").min = today;
+
+            // Nút đặt phòng
+            const btnContainer = document.getElementById("book-btn-container");
+            if (room.is_available) {
+                btnContainer.innerHTML = `
+                    <a id="book-link" href="booking.html?room_id=${room.id}" 
+                        class="btn btn-primary btn-full">
+                        Đặt phòng ngay
+                    </a>`;
+            } else {
+                btnContainer.innerHTML = `
+                    <button class="btn btn-outline btn-full" disabled>
+                        Phòng đã được đặt
+                    </button>`;
+            }
+
+            document.getElementById("room-detail").style.display = "block";
+            document.title = room.name + " - Homestay Manager";
+        }
+
+        // Tính tiền nhanh khi chọn ngày
+        function quickCalc() {
+            const checkIn = document.getElementById("quick-checkin").value;
+            const checkOut = document.getElementById("quick-checkout").value;
+            const summary = document.getElementById("quick-summary");
+            const bookLink = document.getElementById("book-link");
+
+            if (!checkIn || !checkOut || !currentRoom) {
+                summary.style.display = "none";
+                return;
+            }
+
+            if (!validateDateRange(checkIn, checkOut)) {
+                summary.style.display = "none";
+                return;
+            }
+
+            const nights = calculateNights(checkIn, checkOut);
+            const total = calculateTotal(checkIn, checkOut, currentRoom.price);
+
+            document.getElementById("quick-nights").textContent = nights + " đêm";
+            document.getElementById("quick-total").textContent = formatPrice(total);
+            summary.style.display = "block";
+
+            // Cập nhật link đặt phòng kèm ngày đã chọn
+            if (bookLink) {
+                bookLink.href = `booking.html?room_id=${currentRoom.id}&check_in=${checkIn}&check_out=${checkOut}`;
+            }
+        }
+
+        loadRoom();
+    </script>
+</body>
+</html>

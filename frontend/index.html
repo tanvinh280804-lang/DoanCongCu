@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homestay Manager - Trang chủ</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <a href="index.html" class="navbar-brand">Homestay <span>Manager</span></a>
+        <div class="navbar-links" id="nav-auth"></div>
+    </nav>
+
+    <!-- HERO -->
+    <div class="hero">
+        <h1>Tìm phòng homestay lý tưởng</h1>
+        <p>Khám phá những căn phòng tuyệt đẹp với giá tốt nhất</p>
+        <input 
+            type="text" 
+            id="search-input"
+            placeholder="🔍 Tìm kiếm phòng..." 
+            style="padding:12px 24px; border-radius:8px; border:none; 
+                   width:400px; max-width:90%; font-size:1rem; outline:none;"
+            oninput="filterRooms()"
+        >
+    </div>
+
+    <!-- DANH SÁCH PHÒNG -->
+    <div class="container">
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Đang tải danh sách phòng...</p>
+        </div>
+        <div class="rooms-grid" id="rooms-grid"></div>
+        <p id="no-rooms" style="text-align:center; color:#64748b; display:none;">
+            Không tìm thấy phòng nào
+        </p>
+    </div>
+
+    <!-- CHATBOT WIDGET -->
+    <div class="chat-widget">
+        <div class="chat-box" id="chat-box">
+            <div class="chat-header">
+                🤖 Trợ lý Homestay AI
+            </div>
+            <div class="chat-messages" id="chat-messages" style="align-items:flex-start; text-align:left;">
+                <div class="chat-msg bot" style="align-self:flex-start;">
+                    Xin chào! Tôi có thể giúp bạn tìm phòng và tư vấn đặt phòng. Bạn cần hỗ trợ gì không? 😊
+                </div>
+            </div>
+            <div class="chat-input-area">
+                <input 
+                    type="text" 
+                    id="chat-input" 
+                    placeholder="Nhập tin nhắn..."
+                    onkeypress="if(event.key==='Enter') sendChat()"
+                >
+                <button class="chat-send" onclick="sendChat()">➤</button>
+            </div>
+        </div>
+        <button class="chat-toggle" onclick="toggleChat()">💬</button>
+    </div>
+
+    <script>
+    // Animation khi scroll
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+            }
+        });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.room-card').forEach(el => {
+        el.classList.add('fade-in');
+        observer.observe(el);
+    });
+</script>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/chat.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        updateNavbar();
+        checkTokenValid();
+
+        // Biến lưu danh sách phòng
+        let allRooms = [];
+
+        // Tải danh sách phòng khi vào trang
+        async function loadRooms() {
+            const rooms = await apiGetRooms();
+            allRooms = rooms;
+            document.getElementById("loading").style.display = "none";
+            renderRooms(rooms);
+        }
+
+        // Hiển thị danh sách phòng ra HTML
+        function renderRooms(rooms) {
+            const grid = document.getElementById("rooms-grid");
+            const noRooms = document.getElementById("no-rooms");
+
+            if (!rooms || rooms.length === 0) {
+                grid.innerHTML = "";
+                noRooms.style.display = "block";
+                return;
+            }
+
+            noRooms.style.display = "none";
+            grid.innerHTML = rooms.map(room => `
+                <div class="room-card">
+                    <img 
+                        src="${room.image_url || 'images/default-room.jpg'}" 
+                        alt="${room.name}"
+                        onerror="this.src='https://placehold.co/400x200?text=No+Image'"
+                    >
+                    <div class="room-card-body">
+                        <span class="room-badge ${room.is_available ? 'badge-available' : 'badge-unavailable'}">
+                            ${room.is_available ? '✅ Còn phòng' : '❌ Hết phòng'}
+                        </span>
+                        <div class="room-card-title">${room.name}</div>
+                        <div class="room-card-price">
+                            ${room.price.toLocaleString('vi-VN')}đ / đêm
+                        </div>
+                        <div class="room-card-desc">
+                            ${room.description || 'Phòng nghỉ thoải mái, đầy đủ tiện nghi'}
+                        </div>
+                        <div style="color:#64748b; font-size:0.9rem; margin-bottom:16px;">
+                            👥 Sức chứa: ${room.capacity} người
+                        </div>
+                        ${room.is_available 
+                            ? `<a href="booking.html?room_id=${room.id}" class="btn btn-primary btn-full">Đặt phòng ngay</a>`
+                            : `<button class="btn btn-outline btn-full" disabled>Phòng đã được đặt</button>`
+                        }
+                    </div>
+                </div>
+            `).join("");
+        }
+
+        // Lọc phòng theo từ khóa tìm kiếm
+        function filterRooms() {
+            const keyword = document.getElementById("search-input").value.toLowerCase();
+            const filtered = allRooms.filter(room => 
+                room.name.toLowerCase().includes(keyword) ||
+                (room.description && room.description.toLowerCase().includes(keyword))
+            );
+            renderRooms(filtered);
+        }
+
+        loadRooms();
+    </script>
+</body>
+</html>

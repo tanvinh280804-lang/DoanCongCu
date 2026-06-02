@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Homestay Manager</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <a href="index.html" class="navbar-brand">Homestay <span>Manager</span></a>
+        <div class="navbar-links" id="nav-auth"></div>
+    </nav>
+
+    <div class="container">
+
+        <h1 style="font-size:1.8rem; font-weight:800; margin-bottom:32px;">
+            📊 Dashboard Quản lý
+        </h1>
+
+        <!-- THỐNG KÊ -->
+        <div class="dashboard-grid" id="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="stat-rooms">-</div>
+                <div class="stat-label">Tổng số phòng</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="stat-available">-</div>
+                <div class="stat-label">Phòng còn trống</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="stat-bookings">-</div>
+                <div class="stat-label">Tổng booking</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="stat-pending">-</div>
+                <div class="stat-label">Chờ xác nhận</div>
+            </div>
+        </div>
+
+        <!-- QUẢN LÝ PHÒNG -->
+        <div class="table-container">
+            <div class="table-header">
+                <h3>🏠 Danh sách phòng</h3>
+                <button class="btn btn-primary" onclick="showAddRoomForm()">
+                    + Thêm phòng
+                </button>
+            </div>
+
+            <!-- FORM THÊM / SỬA PHÒNG -->
+            <div id="room-form" style="padding:24px; border-bottom:1px solid #e2e8f0; display:none;">
+                <h4 id="room-form-title" style="margin-bottom:20px; font-weight:700;">Thêm phòng mới</h4>
+
+                <div class="alert alert-error" id="room-error"></div>
+                <div class="alert alert-success" id="room-success"></div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                    <div class="form-group">
+                        <label>Tên phòng</label>
+                        <input type="text" id="room-name" placeholder="Phòng Deluxe Ocean View">
+                    </div>
+                    <div class="form-group">
+                        <label>Giá / đêm (VNĐ)</label>
+                        <input type="number" id="room-price" placeholder="500000">
+                    </div>
+                    <div class="form-group">
+                        <label>Sức chứa (người)</label>
+                        <input type="number" id="room-capacity" placeholder="2" value="2">
+                    </div>
+                    <div class="form-group">
+                        <label>Link ảnh phòng</label>
+                        <input type="text" id="room-image" placeholder="https://...">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Mô tả phòng</label>
+                    <textarea id="room-desc" rows="3" 
+                        placeholder="Mô tả tiện nghi, vị trí..."></textarea>
+                </div>
+                <div style="display:flex; gap:12px;">
+                    <button class="btn btn-primary" id="room-submit-btn" onclick="submitRoom()">
+                        Lưu phòng
+                    </button>
+                    <button class="btn btn-outline" onclick="hideRoomForm()">
+                        Hủy
+                    </button>
+                </div>
+            </div>
+
+            <!-- BẢNG DANH SÁCH PHÒNG -->
+            <div style="overflow-x:auto;">
+                <table id="rooms-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Tên phòng</th>
+                            <th>Giá/đêm</th>
+                            <th>Sức chứa</th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rooms-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- QUẢN LÝ BOOKING -->
+        <div class="table-container">
+            <div class="table-header">
+                <h3>📋 Danh sách booking</h3>
+                <div style="display:flex; gap:8px;">
+                    <select id="booking-filter" onchange="filterBookings()" style="
+                        padding:8px 16px; 
+                        border:2px solid #e2e8f0; 
+                        border-radius:8px;
+                        font-size:0.9rem;
+                        outline:none;
+                    ">
+                        <option value="all">Tất cả</option>
+                        <option value="pending">Chờ xác nhận</option>
+                        <option value="confirmed">Đã xác nhận</option>
+                        <option value="cancelled">Đã hủy</option>
+                    </select>
+                </div>
+            </div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Khách hàng</th>
+                            <th>Phòng</th>
+                            <th>Check-in</th>
+                            <th>Check-out</th>
+                            <th>Tổng tiền</th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bookings-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        requireAdmin();
+        updateNavbar();
+
+        let allRooms = [];
+        let allBookings = [];
+        let editingRoomId = null;
+
+        // Tải tất cả dữ liệu
+        async function loadDashboard() {
+            await Promise.all([loadRooms(), loadBookings()]);
+            updateStats();
+        }
+
+        // =====================
+        // THỐNG KÊ
+        // =====================
+        function updateStats() {
+            const available = allRooms.filter(r => r.is_available).length;
+            const pending = allBookings.filter(b => b.status === "pending").length;
+
+            document.getElementById("stat-rooms").textContent = allRooms.length;
+            document.getElementById("stat-available").textContent = available;
+            document.getElementById("stat-bookings").textContent = allBookings.length;
+            document.getElementById("stat-pending").textContent = pending;
+        }
+
+        // =====================
+        // QUẢN LÝ PHÒNG
+        // =====================
+        async function loadRooms() {
+            const rooms = await apiGetRooms();
+            allRooms = rooms;
+            renderRoomsTable(rooms);
+        }
+
+        function renderRoomsTable(rooms) {
+            const tbody = document.getElementById("rooms-tbody");
+            if (!rooms || rooms.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align:center; color:#64748b; padding:32px;">
+                            Chưa có phòng nào
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            tbody.innerHTML = rooms.map(room => `
+                <tr>
+                    <td>#${room.id}</td>
+                    <td>
+                        <strong>${room.name}</strong>
+                        <div style="font-size:0.8rem; color:#64748b;">
+                            ${room.description ? room.description.substring(0, 50) + "..." : ""}
+                        </div>
+                    </td>
+                    <td>${formatPrice(room.price)}</td>
+                    <td>${room.capacity} người</td>
+                    <td>${formatStatus(room.is_available ? "confirmed" : "cancelled")}</td>
+                    <td>
+                        <button class="btn btn-outline" 
+                            style="padding:6px 14px; font-size:0.85rem; margin-right:6px;"
+                            onclick="editRoom(${room.id})">
+                            Sửa
+                        </button>
+                        <button class="btn btn-danger" 
+                            style="padding:6px 14px; font-size:0.85rem;"
+                            onclick="deleteRoom(${room.id})">
+                            Xóa
+                        </button>
+                    </td>
+                </tr>
+            `).join("");
+        }
+
+        function showAddRoomForm() {
+            editingRoomId = null;
+            document.getElementById("room-form-title").textContent = "Thêm phòng mới";
+            document.getElementById("room-submit-btn").textContent = "Lưu phòng";
+            document.getElementById("room-name").value = "";
+            document.getElementById("room-price").value = "";
+            document.getElementById("room-capacity").value = "2";
+            document.getElementById("room-image").value = "";
+            document.getElementById("room-desc").value = "";
+            document.getElementById("room-form").style.display = "block";
+            document.getElementById("room-name").focus();
+        }
+
+        function editRoom(roomId) {
+            const room = allRooms.find(r => r.id === roomId);
+            if (!room) return;
+
+            editingRoomId = roomId;
+            document.getElementById("room-form-title").textContent = "Sửa phòng #" + roomId;
+            document.getElementById("room-submit-btn").textContent = "Cập nhật";
+            document.getElementById("room-name").value = room.name;
+            document.getElementById("room-price").value = room.price;
+            document.getElementById("room-capacity").value = room.capacity;
+            document.getElementById("room-image").value = room.image_url || "";
+            document.getElementById("room-desc").value = room.description || "";
+            document.getElementById("room-form").style.display = "block";
+            document.getElementById("room-name").focus();
+        }
+
+        function hideRoomForm() {
+            document.getElementById("room-form").style.display = "none";
+            editingRoomId = null;
+        }
+
+        async function submitRoom() {
+            const name = document.getElementById("room-name").value.trim();
+            const price = parseFloat(document.getElementById("room-price").value);
+            const capacity = parseInt(document.getElementById("room-capacity").value);
+            const imageUrl = document.getElementById("room-image").value.trim();
+            const description = document.getElementById("room-desc").value.trim();
+
+            if (!name || !price) {
+                showAlert("room-error", "Vui lòng nhập tên và giá phòng", "error");
+                return;
+            }
+
+            const roomData = { name, price, capacity, image_url: imageUrl, description };
+
+            setLoading("room-submit-btn", true, editingRoomId ? "Cập nhật" : "Lưu phòng");
+
+            let data;
+            if (editingRoomId) {
+                data = await apiUpdateRoom(editingRoomId, roomData);
+            } else {
+                data = await apiCreateRoom(roomData);
+            }
+
+            setLoading("room-submit-btn", false, editingRoomId ? "Cập nhật" : "Lưu phòng");
+
+            if (data.id) {
+                showAlert("room-success", 
+                    editingRoomId ? "Cập nhật phòng thành công!" : "Thêm phòng thành công!", 
+                    "success"
+                );
+                hideRoomForm();
+                await loadRooms();
+                updateStats();
+            } else {
+                showAlert("room-error", data.detail || "Có lỗi xảy ra", "error");
+            }
+        }
+
+        async function deleteRoom(roomId) {
+            confirmAction("Bạn có chắc muốn xóa phòng này không?", async () => {
+                const data = await apiDeleteRoom(roomId);
+                if (data.message) {
+                    await loadRooms();
+                    updateStats();
+                }
+            });
+        }
+
+        // =====================
+        // QUẢN LÝ BOOKING
+        // =====================
+        async function loadBookings() {
+            const bookings = await apiGetAllBookings();
+            allBookings = bookings;
+            renderBookingsTable(bookings);
+        }
+
+        function renderBookingsTable(bookings) {
+            const tbody = document.getElementById("bookings-tbody");
+            if (!bookings || bookings.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align:center; color:#64748b; padding:32px;">
+                            Chưa có booking nào
+                        </td>
+                    </tr>`;
+                return;
+            }
+
+            tbody.innerHTML = bookings.map(b => `
+                <tr>
+                    <td>#${b.id}</td>
+                    <td>
+                        <strong>${b.guest_name || "N/A"}</strong>
+                        <div style="font-size:0.8rem; color:#64748b;">${b.guest_phone || ""}</div>
+                    </td>
+                    <td>Phòng #${b.room_id}</td>
+                    <td>${formatDate(b.check_in)}</td>
+                    <td>${formatDate(b.check_out)}</td>
+                    <td>${b.total_price ? formatPrice(b.total_price) : "N/A"}</td>
+                    <td>${formatStatus(b.status)}</td>
+                    <td>
+                        ${b.status === "pending" ? `
+                            <button class="btn btn-success" 
+                                style="padding:6px 14px; font-size:0.85rem; margin-right:6px;"
+                                onclick="updateBookingStatus(${b.id}, 'confirmed')">
+                                Duyệt
+                            </button>
+                            <button class="btn btn-danger" 
+                                style="padding:6px 14px; font-size:0.85rem;"
+                                onclick="updateBookingStatus(${b.id}, 'cancelled')">
+                                Hủy
+                            </button>
+                        ` : `<span style="color:#64748b; font-size:0.85rem;">Đã xử lý</span>`}
+                    </td>
+                </tr>
+            `).join("");
+        }
+
+        function filterBookings() {
+            const filter = document.getElementById("booking-filter").value;
+            if (filter === "all") {
+                renderBookingsTable(allBookings);
+            } else {
+                renderBookingsTable(allBookings.filter(b => b.status === filter));
+            }
+        }
+
+        async function updateBookingStatus(bookingId, status) {
+            const msg = status === "confirmed" ? "Xác nhận duyệt booking này?" : "Xác nhận hủy booking này?";
+            confirmAction(msg, async () => {
+                const data = await apiUpdateBooking(bookingId, status);
+                if (data.id) {
+                    await loadBookings();
+                    updateStats();
+                }
+            });
+        }
+
+        loadDashboard();
+    </script>
+</body>
+</html>
