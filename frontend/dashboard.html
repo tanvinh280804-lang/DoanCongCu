@@ -343,18 +343,23 @@
                     <td>${formatStatus(b.status)}</td>
                     <td>
                         ${b.status === "pending" ? `
-                            <button class="btn btn-success" 
-                                style="padding:6px 14px; font-size:0.85rem; margin-right:6px;"
-                                onclick="updateBookingStatus(${b.id}, 'confirmed')">
-                                Duyệt
-                            </button>
-                            <button class="btn btn-danger" 
-                                style="padding:6px 14px; font-size:0.85rem;"
-                                onclick="updateBookingStatus(${b.id}, 'cancelled')">
-                                Hủy
-                            </button>
-                        ` : `<span style="color:#64748b; font-size:0.85rem;">Đã xử lý</span>`}
-                    </td>
+                          <button class="btn btn-success" 
+                          style="padding:6px 14px; font-size:0.85rem; margin-right:6px;"
+                          onclick="updateBookingStatus(${b.id}, 'confirmed')">
+                          Duyệt
+                     </button>
+    <button class="btn btn-danger" 
+        style="padding:6px 14px; font-size:0.85rem;"
+        onclick="updateBookingStatus(${b.id}, 'cancelled')">
+        Hủy
+    </button>
+` : b.status === "confirmed" ? `
+    <button class="btn btn-primary"
+        style="padding:6px 14px; font-size:0.85rem;"
+        onclick="updateBookingStatus(${b.id}, 'checked_out')">
+        Trả phòng
+    </button>
+` : `<span style="color:#64748b; font-size:0.85rem;">Đã xử lý</span>`}
                 </tr>
             `).join("");
         }
@@ -368,16 +373,21 @@
             }
         }
 
-        async function updateBookingStatus(bookingId, status) {
-            const msg = status === "confirmed" ? "Xác nhận duyệt booking này?" : "Xác nhận hủy booking này?";
-            confirmAction(msg, async () => {
-                const data = await apiUpdateBooking(bookingId, status);
-                if (data.id) {
-                    await loadBookings();
-                    updateStats();
-                }
-            });
+async function updateBookingStatus(bookingId, status) {
+    const messages = {
+        "confirmed": "Xác nhận duyệt booking này?",
+        "cancelled": "Xác nhận hủy booking này?",
+        "checked_out": "Xác nhận khách đã trả phòng?"
+    };
+    confirmAction(messages[status], async () => {
+        const data = await apiUpdateBooking(bookingId, status);
+        if (data.id) {
+            await loadBookings();
+            await loadRooms();
+            updateStats();
         }
+    });
+}
 
         loadDashboard();
     </script>

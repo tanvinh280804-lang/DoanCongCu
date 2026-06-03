@@ -44,7 +44,8 @@ function formatStatus(status) {
     const map = {
         "pending":   { text: "Chờ xác nhận", color: "#f59e0b", bg: "#fef3c7" },
         "confirmed": { text: "Đã xác nhận",  color: "#10b981", bg: "#d1fae5" },
-        "cancelled": { text: "Đã hủy",       color: "#ef4444", bg: "#fee2e2" }
+        "cancelled": { text: "Đã hủy",       color: "#ef4444", bg: "#fee2e2" },
+        "checked_out":  { text: "Đã trả phòng", color: "#6366f1", bg: "#ede9fe" }
     };
     const s = map[status] || { text: status, color: "#64748b", bg: "#f1f5f9" };
     return `<span style="

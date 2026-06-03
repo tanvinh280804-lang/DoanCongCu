@@ -121,8 +121,8 @@ def update_booking(
 
     booking.status = booking_data.status
 
-    # Nếu hủy booking thì trả phòng về trạng thái trống
-    if booking_data.status == "cancelled":
+    # Nếu hủy hoặc trả phòng thì phòng về trạng thái còn trống
+    if booking_data.status in ["cancelled", "checked_out"]:
         room = db.query(Room).filter(Room.id == booking.room_id).first()
         if room:
             room.is_available = True
