@@ -52,10 +52,8 @@
             <!-- FORM THÊM / SỬA PHÒNG -->
             <div id="room-form" style="padding:24px; border-bottom:1px solid #e2e8f0; display:none;">
                 <h4 id="room-form-title" style="margin-bottom:20px; font-weight:700;">Thêm phòng mới</h4>
-
                 <div class="alert alert-error" id="room-error"></div>
                 <div class="alert alert-success" id="room-success"></div>
-
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
                     <div class="form-group">
                         <label>Tên phòng</label>
@@ -76,16 +74,11 @@
                 </div>
                 <div class="form-group">
                     <label>Mô tả phòng</label>
-                    <textarea id="room-desc" rows="3" 
-                        placeholder="Mô tả tiện nghi, vị trí..."></textarea>
+                    <textarea id="room-desc" rows="3" placeholder="Mô tả tiện nghi, vị trí..."></textarea>
                 </div>
                 <div style="display:flex; gap:12px;">
-                    <button class="btn btn-primary" id="room-submit-btn" onclick="submitRoom()">
-                        Lưu phòng
-                    </button>
-                    <button class="btn btn-outline" onclick="hideRoomForm()">
-                        Hủy
-                    </button>
+                    <button class="btn btn-primary" id="room-submit-btn" onclick="submitRoom()">Lưu phòng</button>
+                    <button class="btn btn-outline" onclick="hideRoomForm()">Hủy</button>
                 </div>
             </div>
 
@@ -123,6 +116,7 @@
                         <option value="pending">Chờ xác nhận</option>
                         <option value="confirmed">Đã xác nhận</option>
                         <option value="cancelled">Đã hủy</option>
+                        <option value="checked_out">Đã trả phòng</option>
                     </select>
                 </div>
             </div>
@@ -147,6 +141,40 @@
 
     </div>
 
+    <!-- MODAL XÁC NHẬN -->
+    <div id="confirm-modal" style="
+        display:none;
+        position:fixed;
+        top:0; left:0;
+        width:100%; height:100%;
+        background:rgba(0,0,0,0.5);
+        z-index:999;
+        justify-content:center;
+        align-items:center;
+    ">
+        <div style="
+            background:white;
+            border-radius:16px;
+            padding:40px;
+            max-width:420px;
+            width:90%;
+            text-align:center;
+            box-shadow:0 20px 60px rgba(0,0,0,0.3);
+        ">
+            <div id="confirm-modal-icon" style="font-size:3.5rem; margin-bottom:16px;">⚠️</div>
+            <h3 id="confirm-modal-title" style="font-size:1.4rem; font-weight:700; margin-bottom:12px;"></h3>
+            <p id="confirm-modal-message" style="color:#64748b; margin-bottom:28px;"></p>
+            <div style="display:flex; gap:12px; justify-content:center;">
+                <button class="btn btn-outline" onclick="closeConfirmModal()" style="min-width:120px;">
+                    Hủy bỏ
+                </button>
+                <button id="confirm-modal-btn" onclick="executeConfirm()" style="min-width:120px;" class="btn btn-primary">
+                    Xác nhận
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
@@ -157,20 +185,46 @@
         let allRooms = [];
         let allBookings = [];
         let editingRoomId = null;
+        let confirmCallback = null;
 
-        // Tải tất cả dữ liệu
+        // =====================
+        // MODAL XÁC NHẬN
+        // =====================
+        function showConfirmModal(title, message, icon, btnClass, btnText, callback) {
+            document.getElementById("confirm-modal-icon").textContent = icon;
+            document.getElementById("confirm-modal-title").textContent = title;
+            document.getElementById("confirm-modal-message").textContent = message;
+            document.getElementById("confirm-modal-btn").className = `btn ${btnClass}`;
+            document.getElementById("confirm-modal-btn").textContent = btnText;
+            document.getElementById("confirm-modal").style.display = "flex";
+            confirmCallback = callback;
+        }
+
+        function closeConfirmModal() {
+            document.getElementById("confirm-modal").style.display = "none";
+            confirmCallback = null;
+        }
+
+        function executeConfirm() {
+            if (confirmCallback) confirmCallback();
+            closeConfirmModal();
+        }
+
+        document.getElementById("confirm-modal").addEventListener("click", function(e) {
+            if (e.target === this) closeConfirmModal();
+        });
+
+        // =====================
+        // THỐNG KÊ
+        // =====================
         async function loadDashboard() {
             await Promise.all([loadRooms(), loadBookings()]);
             updateStats();
         }
 
-        // =====================
-        // THỐNG KÊ
-        // =====================
         function updateStats() {
             const available = allRooms.filter(r => r.is_available).length;
             const pending = allBookings.filter(b => b.status === "pending").length;
-
             document.getElementById("stat-rooms").textContent = allRooms.length;
             document.getElementById("stat-available").textContent = available;
             document.getElementById("stat-bookings").textContent = allBookings.length;
@@ -197,7 +251,6 @@
                     </tr>`;
                 return;
             }
-
             tbody.innerHTML = rooms.map(room => `
                 <tr>
                     <td>#${room.id}</td>
@@ -213,14 +266,10 @@
                     <td>
                         <button class="btn btn-outline" 
                             style="padding:6px 14px; font-size:0.85rem; margin-right:6px;"
-                            onclick="editRoom(${room.id})">
-                            Sửa
-                        </button>
+                            onclick="editRoom(${room.id})">Sửa</button>
                         <button class="btn btn-danger" 
                             style="padding:6px 14px; font-size:0.85rem;"
-                            onclick="deleteRoom(${room.id})">
-                            Xóa
-                        </button>
+                            onclick="deleteRoom(${room.id})">Xóa</button>
                     </td>
                 </tr>
             `).join("");
@@ -242,7 +291,6 @@
         function editRoom(roomId) {
             const room = allRooms.find(r => r.id === roomId);
             if (!room) return;
-
             editingRoomId = roomId;
             document.getElementById("room-form-title").textContent = "Sửa phòng #" + roomId;
             document.getElementById("room-submit-btn").textContent = "Cập nhật";
@@ -273,7 +321,6 @@
             }
 
             const roomData = { name, price, capacity, image_url: imageUrl, description };
-
             setLoading("room-submit-btn", true, editingRoomId ? "Cập nhật" : "Lưu phòng");
 
             let data;
@@ -286,8 +333,8 @@
             setLoading("room-submit-btn", false, editingRoomId ? "Cập nhật" : "Lưu phòng");
 
             if (data.id) {
-                showAlert("room-success", 
-                    editingRoomId ? "Cập nhật phòng thành công!" : "Thêm phòng thành công!", 
+                showAlert("room-success",
+                    editingRoomId ? "Cập nhật phòng thành công!" : "Thêm phòng thành công!",
                     "success"
                 );
                 hideRoomForm();
@@ -299,13 +346,20 @@
         }
 
         async function deleteRoom(roomId) {
-            confirmAction("Bạn có chắc muốn xóa phòng này không?", async () => {
-                const data = await apiDeleteRoom(roomId);
-                if (data.message) {
-                    await loadRooms();
-                    updateStats();
+            showConfirmModal(
+                "Xác nhận xóa phòng",
+                "Bạn có chắc muốn xóa phòng này không? Hành động này không thể hoàn tác!",
+                "🗑️",
+                "btn-danger",
+                "Xác nhận xóa",
+                async () => {
+                    const data = await apiDeleteRoom(roomId);
+                    if (data.message) {
+                        await loadRooms();
+                        updateStats();
+                    }
                 }
-            });
+            );
         }
 
         // =====================
@@ -328,7 +382,6 @@
                     </tr>`;
                 return;
             }
-
             tbody.innerHTML = bookings.map(b => `
                 <tr>
                     <td>#${b.id}</td>
@@ -343,23 +396,24 @@
                     <td>${formatStatus(b.status)}</td>
                     <td>
                         ${b.status === "pending" ? `
-                          <button class="btn btn-success" 
-                          style="padding:6px 14px; font-size:0.85rem; margin-right:6px;"
-                          onclick="updateBookingStatus(${b.id}, 'confirmed')">
-                          Duyệt
-                     </button>
-    <button class="btn btn-danger" 
-        style="padding:6px 14px; font-size:0.85rem;"
-        onclick="updateBookingStatus(${b.id}, 'cancelled')">
-        Hủy
-    </button>
-` : b.status === "confirmed" ? `
-    <button class="btn btn-primary"
-        style="padding:6px 14px; font-size:0.85rem;"
-        onclick="updateBookingStatus(${b.id}, 'checked_out')">
-        Trả phòng
-    </button>
-` : `<span style="color:#64748b; font-size:0.85rem;">Đã xử lý</span>`}
+                            <button class="btn btn-success"
+                                style="padding:6px 14px; font-size:0.85rem; margin-right:6px;"
+                                onclick="updateBookingStatus(${b.id}, 'confirmed')">
+                                Duyệt
+                            </button>
+                            <button class="btn btn-danger"
+                                style="padding:6px 14px; font-size:0.85rem;"
+                                onclick="updateBookingStatus(${b.id}, 'cancelled')">
+                                Hủy
+                            </button>
+                        ` : b.status === "confirmed" ? `
+                            <button class="btn btn-primary"
+                                style="padding:6px 14px; font-size:0.85rem;"
+                                onclick="updateBookingStatus(${b.id}, 'checked_out')">
+                                Trả phòng
+                            </button>
+                        ` : `<span style="color:#64748b; font-size:0.85rem;">Đã xử lý</span>`}
+                    </td>
                 </tr>
             `).join("");
         }
@@ -373,21 +427,48 @@
             }
         }
 
-async function updateBookingStatus(bookingId, status) {
-    const messages = {
-        "confirmed": "Xác nhận duyệt booking này?",
-        "cancelled": "Xác nhận hủy booking này?",
-        "checked_out": "Xác nhận khách đã trả phòng?"
-    };
-    confirmAction(messages[status], async () => {
-        const data = await apiUpdateBooking(bookingId, status);
-        if (data.id) {
-            await loadBookings();
-            await loadRooms();
-            updateStats();
+        async function updateBookingStatus(bookingId, status) {
+            const configs = {
+                "confirmed": {
+                    title: "Xác nhận duyệt booking",
+                    message: "Bạn có chắc muốn duyệt booking này không?",
+                    icon: "✅",
+                    btnClass: "btn-success",
+                    btnText: "Xác nhận duyệt"
+                },
+                "cancelled": {
+                    title: "Xác nhận hủy booking",
+                    message: "Bạn có chắc muốn hủy booking này không? Hành động này không thể hoàn tác!",
+                    icon: "❌",
+                    btnClass: "btn-danger",
+                    btnText: "Xác nhận hủy"
+                },
+                "checked_out": {
+                    title: "Xác nhận trả phòng",
+                    message: "Xác nhận khách đã trả phòng? Phòng sẽ được mở lại cho khách mới.",
+                    icon: "🏠",
+                    btnClass: "btn-primary",
+                    btnText: "Xác nhận trả phòng"
+                }
+            };
+
+            const config = configs[status];
+            showConfirmModal(
+                config.title,
+                config.message,
+                config.icon,
+                config.btnClass,
+                config.btnText,
+                async () => {
+                    const data = await apiUpdateBooking(bookingId, status);
+                    if (data.id) {
+                        await loadBookings();
+                        await loadRooms();
+                        updateStats();
+                    }
+                }
+            );
         }
-    });
-}
 
         loadDashboard();
     </script>
