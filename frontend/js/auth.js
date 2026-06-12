@@ -33,39 +33,45 @@ function isAdmin() {
 // ĐĂNG NHẬP
 // =====================
 
-async function handleLogin(event) {
-    event.preventDefault();
+async function handleLogin(email, password) {
+    try {
+        const data = await apiLogin(email, password);
 
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
+        if (data.access_token) {
+            saveToken(data.access_token);
 
-    setLoading("login-btn", true, "Đăng nhập");
-
-    const data = await apiLogin(email, password);
-
-    setLoading("login-btn", false, "Đăng nhập");
-
-    if (data.access_token) {
-        saveToken(data.access_token);
+            // Tạo user tạm từ email nếu getMe lỗi
+            // Tạo user tạm từ email nếu getMe lỗi
+        let user = { email: email, full_name: email.split('@')[0], is_admin: false };
 
         try {
-            const user = await apiGetMe();
-            if (user && !user.detail) {
-                saveUser(user);
-            }
-        } catch (e) {
-            console.log("Không lấy được thông tin user");
+        const me = await apiGetMe();
+        if (me && me.id) {
+            user = me;
+        }
+           } catch(e) {
+              console.log("GetMe error:", e);
         }
 
-        // Thông báo đăng nhập thành công
-        showToast("Đăng nhập thành công! Chào mừng bạn trở lại 🎉", "success");
+            saveUser(user);
 
-        setTimeout(() => {
-            window.location.href = "index.html";
-        }, 800);
-    } else {
-        showAlert("login-error", data.detail || "Email hoặc mật khẩu không đúng", "error");
+            // Chuyển hướng
+            if (user.is_admin) {
+                window.location.href = "dashboard.html";
+            } else {
+                window.location.href = "index.html";
+            }
+            return null;
+        } else {
+            return data.detail || "Email hoặc mật khẩu không đúng";
+        }
+    } catch (err) {
+        console.log("Login error:", err);
+        return "Lỗi kết nối server, vui lòng thử lại";
     }
+
+    // Thông báo đăng nhập thành công
+        showToast("Đăng nhập thành công! Chào mừng bạn trở lại 🎉", "success");
 }
 
 // =====================
