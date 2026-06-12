@@ -55,13 +55,18 @@ async function handleLogin(email, password) {
 
             saveUser(user);
 
-            // Chuyển hướng
-            if (user.is_admin) {
-                window.location.href = "dashboard.html";
-            } else {
-                window.location.href = "index.html";
-            }
-            return null;
+            // thông báo
+            showToast("Đăng nhập thành công! Chào mừng bạn trở lại 🎉");
+
+setTimeout(() => {
+    if (user.is_admin) {
+        window.location.href = "dashboard.html";
+    } else {
+        window.location.href = "index.html";
+    }
+}, 1500);
+
+return null;
         } else {
             return data.detail || "Email hoặc mật khẩu không đúng";
         }
