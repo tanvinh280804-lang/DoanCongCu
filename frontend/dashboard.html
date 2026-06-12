@@ -333,34 +333,35 @@
             setLoading("room-submit-btn", false, editingRoomId ? "Cập nhật" : "Lưu phòng");
 
             if (data.id) {
-                showAlert("room-success",
-                    editingRoomId ? "Cập nhật phòng thành công!" : "Thêm phòng thành công!",
-                    "success"
-                );
-                hideRoomForm();
-                await loadRooms();
-                updateStats();
-            } else {
-                showAlert("room-error", data.detail || "Có lỗi xảy ra", "error");
-            }
+    showToast(
+        editingRoomId ? "Cập nhật phòng thành công! ✅" : "Thêm phòng mới thành công! 🎉",
+        "success"
+    );
+    hideRoomForm();
+    await loadRooms();
+    updateStats();
+} else {
+    showAlert("room-error", data.detail || "Có lỗi xảy ra", "error");
+}
         }
 
         async function deleteRoom(roomId) {
-            showConfirmModal(
-                "Xác nhận xóa phòng",
-                "Bạn có chắc muốn xóa phòng này không? Hành động này không thể hoàn tác!",
-                "🗑️",
-                "btn-danger",
-                "Xác nhận xóa",
-                async () => {
-                    const data = await apiDeleteRoom(roomId);
-                    if (data.message) {
-                        await loadRooms();
-                        updateStats();
-                    }
-                }
-            );
+    showConfirmModal(
+        "Xác nhận xóa phòng",
+        "Bạn có chắc muốn xóa phòng này không? Hành động này không thể hoàn tác!",
+        "🗑️",
+        "btn-danger",
+        "Xác nhận xóa",
+        async () => {
+            const data = await apiDeleteRoom(roomId);
+            if (data.message) {
+                showToast("Đã xóa phòng thành công! 🗑️", "success");
+                await loadRooms();
+                updateStats();
+            }
         }
+    );
+}
 
         // =====================
         // QUẢN LÝ BOOKING
@@ -460,13 +461,19 @@
                 config.btnClass,
                 config.btnText,
                 async () => {
-                    const data = await apiUpdateBooking(bookingId, status);
-                    if (data.id) {
-                        await loadBookings();
-                        await loadRooms();
-                        updateStats();
-                    }
-                }
+    const data = await apiUpdateBooking(bookingId, status);
+    if (data.id) {
+        const messages = {
+            "confirmed": "Đã duyệt booking thành công! ✅",
+            "cancelled": "Đã hủy booking thành công!",
+            "checked_out": "Đã xác nhận trả phòng! Phòng đã mở lại 🏠"
+        };
+        showToast(messages[status], status === "cancelled" ? "info" : "success");
+        await loadBookings();
+        await loadRooms();
+        updateStats();
+    }
+}
             );
         }
 

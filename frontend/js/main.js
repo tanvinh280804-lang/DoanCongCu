@@ -124,3 +124,85 @@ function confirmAction(message, onConfirm) {
         onConfirm();
     }
 }
+
+// =====================
+// TOAST NOTIFICATION
+// =====================
+function showToast(message, type = "success") {
+    // Tạo container nếu chưa có
+    let container = document.getElementById("toast-container");
+    if (!container) {
+        container = document.createElement("div");
+        container.id = "toast-container";
+        container.style.cssText = `
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        `;
+        document.body.appendChild(container);
+    }
+
+    const colors = {
+        success: { bg: "#10b981", icon: "✓" },
+        error: { bg: "#ef4444", icon: "✕" },
+        info: { bg: "#6366f1", icon: "ℹ" }
+    };
+    const c = colors[type] || colors.success;
+
+    const toast = document.createElement("div");
+    toast.style.cssText = `
+        background: white;
+        border-left: 5px solid ${c.bg};
+        border-radius: 10px;
+        padding: 16px 20px;
+        min-width: 280px;
+        max-width: 360px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: slideInToast 0.3s ease;
+        font-weight: 600;
+        color: #1e293b;
+    `;
+    toast.innerHTML = `
+        <div style="
+            width: 28px; height: 28px;
+            background: ${c.bg};
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        ">${c.icon}</div>
+        <div style="flex:1; font-size:0.95rem;">${message}</div>
+    `;
+
+    container.appendChild(toast);
+
+    // Tự động ẩn sau 3 giây
+    setTimeout(() => {
+        toast.style.animation = "slideOutToast 0.3s ease forwards";
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// Thêm animation CSS
+const toastStyle = document.createElement("style");
+toastStyle.textContent = `
+@keyframes slideInToast {
+    from { transform: translateX(120%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes slideOutToast {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(120%); opacity: 0; }
+}
+`;
+document.head.appendChild(toastStyle);
