@@ -154,7 +154,6 @@ function updateNavbar() {
         navAuth.innerHTML = `
             ${!user.is_admin ? '<a href="my-bookings.html" class="nav-link">Booking của tôi</a>' : ''}
             <span class="nav-user">Xin chào, ${user.full_name}</span>
-            ${user.is_admin ? '<a href="dashboard.html" class="nav-link">Dashboard</a>' : ''}
             <a href="javascript:void(0)" onclick="handleLogout()" class="nav-link btn-logout">Đăng xuất</a>
         `;
     } else {
