@@ -94,6 +94,7 @@
             btn.disabled = true;
 
             const error = await handleRegister(fullname, email, password);
+            console.log("handleRegister result:", error);
 
             if (error) {
                 errorMsg.textContent = error;
@@ -101,7 +102,7 @@
                 btn.textContent = "Đăng ký";
                 btn.disabled = false;
             } else {
-            // Hiện thông báo thành công trước khi chuyển trang
+                console.log("Đăng ký thành công, chuẩn bị redirect...");
                 successMsg.textContent = "Đăng ký thành công! Đang chuyển vào trang chủ...";
                 successMsg.style.display = "block";
             }

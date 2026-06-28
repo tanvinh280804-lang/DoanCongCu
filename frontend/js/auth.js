@@ -29,44 +29,62 @@ function isAdmin() {
     return user && user.is_admin === true;
 }
 
+function showToast(message) {
+    const toast = document.createElement("div");
+    toast.textContent = message;
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #4CAF50;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        z-index: 9999;
+        font-size: 14px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
 // =====================
 // ĐĂNG NHẬP
 // =====================
 
-async function handleLogin(email, password) {
+async function handleLogin(email, password, redirect = true) {
     try {
         const data = await apiLogin(email, password);
 
         if (data.access_token) {
             saveToken(data.access_token);
 
-            // Tạo user tạm từ email nếu getMe lỗi
-            // Tạo user tạm từ email nếu getMe lỗi
-        let user = { email: email, full_name: email.split('@')[0], is_admin: false };
+            let user = { email: email, full_name: email.split('@')[0], is_admin: false };
 
-        try {
-        const me = await apiGetMe();
-        if (me && me.id) {
-            user = me;
-        }
-           } catch(e) {
-              console.log("GetMe error:", e);
-        }
+            try {
+                const me = await apiGetMe();
+                if (me && me.id) {
+                    user = me;
+                }
+            } catch(e) {
+                console.log("GetMe error:", e);
+            }
 
             saveUser(user);
 
-            // thông báo
-            showToast("Đăng nhập thành công! Chào mừng bạn trở lại 🎉");
+            // Chỉ redirect khi gọi từ trang login
+            if (redirect) {
+                showToast("Đăng nhập thành công! Chào mừng bạn trở lại 🎉");
+                setTimeout(() => {
+                    if (user.is_admin) {
+                        window.location.replace("dashboard.html");
+                    } else {
+                        window.location.replace("index.html");
+                    }
+                }, 1500);
+            }
 
-setTimeout(() => {
-    if (user.is_admin) {
-        window.location.href = "dashboard.html";
-    } else {
-        window.location.href = "index.html";
-    }
-}, 1500);
-
-return null;
+            return null;
         } else {
             return data.detail || "Email hoặc mật khẩu không đúng";
         }
@@ -85,8 +103,8 @@ async function handleRegister(fullName, email, password) {
         const data = await apiRegister(fullName, email, password);
 
         if (data.id) {
-            // Đăng ký xong tự động đăng nhập và vào trang chủ
-            await handleLogin(email, password);
+            // Đăng nhập nhưng không redirect, để register.html tự redirect
+            await handleLogin(email, password, false);
             return null;
         } else {
             return data.detail || "Đăng ký thất bại";
@@ -103,7 +121,6 @@ async function handleRegister(fullName, email, password) {
 function handleLogout() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    // Xóa hết localStorage cho chắc
     localStorage.clear();
     window.location.href = "index.html";
 }
@@ -112,14 +129,12 @@ function handleLogout() {
 // BẢO VỆ TRANG
 // =====================
 
-// Dùng cho trang cần đăng nhập
 function requireLogin() {
     if (!isLoggedIn()) {
         window.location.href = "login.html";
     }
 }
 
-// Dùng cho trang chỉ admin mới vào được
 function requireAdmin() {
     if (!isLoggedIn()) {
         window.location.href = "login.html";
@@ -130,7 +145,6 @@ function requireAdmin() {
     }
 }
 
-// Cập nhật navbar theo trạng thái đăng nhập
 function updateNavbar() {
     const user = getUser();
     const navAuth = document.getElementById("nav-auth");
@@ -157,7 +171,6 @@ async function checkTokenValid() {
     try {
         const user = await apiGetMe();
         if (!user || user.detail) {
-            // Token hết hạn hoặc không hợp lệ
             localStorage.clear();
             window.location.reload();
         } else {
