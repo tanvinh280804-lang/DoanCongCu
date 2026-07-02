@@ -10,12 +10,12 @@ db = SessionLocal()
 admin = User(
     full_name="Nhat Quang",
     email="nhatquangle1@gmail.com",
-    hashed_password=hash_password("123456"),
+    hashed_password=hash_password("02062004"),
     is_admin=True
 )
 db.add(admin)
 
-# Thêm phòng mẫu
+# Thêm phòng mẫ
 rooms = [
     Room(name="Phong Deluxe View Bien", description="Phong rong rai voi tam nhin ra bien tuyet dep", price=850000, capacity=2, image_url="https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800"),
     Room(name="Phong Superior Garden", description="Phong huong vuon yen tinh thich hop nghi duong", price=650000, capacity=2, image_url="https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800"),
