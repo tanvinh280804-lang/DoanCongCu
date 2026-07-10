@@ -77,6 +77,14 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- ĐÁNH GIÁ -->
+                    <div style="background:white; border-radius:12px; padding:32px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1); margin-top:24px;">
+                        <h3 style="font-weight:700; margin-bottom:16px;">⭐ Đánh giá từ khách hàng</h3>
+                        <div id="room-reviews">
+                            <p style="color:#94a3b8; text-align:center; padding:16px;">Đang tải đánh giá...</p>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- CARD ĐẶT PHÒNG -->
@@ -137,6 +145,7 @@
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/reviews.js"></script>
     <script>
         updateNavbar();
 
@@ -202,6 +211,8 @@
 
             document.getElementById("room-detail").style.display = "block";
             document.title = room.name + " - Homestay Manager";
+
+            loadRoomReviews(room.id, "room-reviews");
         }
 
         // Tính tiền nhanh khi chọn ngày

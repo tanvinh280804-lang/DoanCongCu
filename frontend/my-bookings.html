@@ -87,14 +87,25 @@
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
     <script src="js/main.js"></script>
+    <script src="js/reviews.js"></script>
     <script>
         requireLogin();
         updateNavbar();
 
         let cancelBookingId = null;
+        let myPayments = [];
+        let myReviews = [];
 
         async function loadMyBookings() {
-            const bookings = await apiGetMyBookings();
+            const [bookings, payments, reviews] = await Promise.all([
+                apiGetMyBookings(),
+                apiGetMyPayments(),
+                apiGetMyReviews()
+            ]);
+
+            myPayments = Array.isArray(payments) ? payments : [];
+            myReviews = Array.isArray(reviews) ? reviews : [];
+
             document.getElementById("loading").style.display = "none";
 
             if (!bookings || bookings.length === 0) {
@@ -103,7 +114,11 @@
             }
 
             const list = document.getElementById("bookings-list");
-            list.innerHTML = bookings.map(b => `
+            list.innerHTML = bookings.map(b => {
+                const payment = myPayments.find(p => p.booking_id === b.id);
+                const review = myReviews.find(r => r.booking_id === b.id);
+
+                return `
                 <div style="
                     background:white;
                     border-radius:12px;
@@ -131,6 +146,15 @@
                             <div style="font-size:1.1rem; font-weight:700; color:#2563eb;">
                                 💰 ${b.total_price ? formatPrice(b.total_price) : "N/A"}
                             </div>
+                            ${payment ? `
+                                <div style="margin-top:6px; font-size:0.85rem; color:#64748b;">
+                                    💳 Thanh toán: <strong>${
+                                        payment.status === "completed" ? "Đã thanh toán ✅" :
+                                        payment.status === "failed" ? "Thất bại" :
+                                        payment.status === "refunded" ? "Đã hoàn tiền" : "Chờ xác nhận"
+                                    }</strong>
+                                </div>
+                            ` : ''}
                         </div>
                         <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px;">
                             ${formatStatus(b.status)}
@@ -141,10 +165,36 @@
                                     Hủy booking
                                 </button>
                             ` : ''}
+                            ${(b.status !== 'cancelled' && !payment) ? `
+                                <a href="payment.html?booking_id=${b.id}" class="btn btn-primary"
+                                    style="padding:8px 16px; font-size:0.85rem;">
+                                    💳 Thanh toán
+                                </a>
+                            ` : ''}
                         </div>
                     </div>
+
+                    ${b.status === 'checked_out' ? `
+                        <div style="margin-top:16px; border-top:1px solid #e2e8f0; padding-top:16px;">
+                            ${review ? `
+                                <div style="color:#64748b;">
+                                    Bạn đã đánh giá: ${renderStars(review.rating)}
+                                    <span style="margin-left:8px;">${review.comment || ""}</span>
+                                </div>
+                            ` : `<div id="review-form-${b.id}"></div>`}
+                        </div>
+                    ` : ''}
                 </div>
-            `).join("");
+            `;
+            }).join("");
+
+            // Gắn form đánh giá cho các booking đã trả phòng nhưng chưa đánh giá
+            bookings.forEach(b => {
+                const review = myReviews.find(r => r.booking_id === b.id);
+                if (b.status === 'checked_out' && !review) {
+                    renderReviewForm(b.id, `review-form-${b.id}`, () => loadMyBookings());
+                }
+            });
         }
 
         function cancelBooking(bookingId, roomId, checkIn, checkOut) {

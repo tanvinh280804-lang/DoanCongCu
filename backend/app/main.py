@@ -4,10 +4,12 @@ from app.database import engine, Base
 from app.config import settings
 
 # Import models để SQLAlchemy tạo bảng
-from app.models import User, Room, Booking
+from app.models import User, Room, Booking, Payment, Review
 
 # Import routers
-from app.routers import auth, rooms, bookings, chat
+from app.routers import auth, rooms, bookings, chat, payments, reviews
+
+
 
 # Tạo tất cả bảng trong DB
 Base.metadata.create_all(bind=engine)
@@ -58,6 +60,8 @@ app.include_router(auth.router,     prefix="/api/auth",     tags=["Auth"])
 app.include_router(rooms.router,    prefix="/api/rooms",    tags=["Rooms"])
 app.include_router(bookings.router, prefix="/api/bookings", tags=["Bookings"])
 app.include_router(chat.router,     prefix="/api/chat",     tags=["Chatbot"])
+app.include_router(payments.router, prefix="/api/payments", tags=["Payments"])
+app.include_router(reviews.router,  prefix="/api/reviews",  tags=["Reviews"])
 
 @app.get("/")
 def root():

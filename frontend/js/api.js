@@ -140,3 +140,81 @@ async function apiChat(message, history = []) {
     });
     return res.json();
 }
+
+// =====================
+// PAYMENTS API
+// =====================
+
+async function apiCreatePayment(bookingId, method) {
+    const res = await fetch(`${API_URL}/payments/`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ booking_id: bookingId, method: method })
+    });
+    return res.json();
+}
+
+async function apiGetMyPayments() {
+    const res = await fetch(`${API_URL}/payments/my-payments`, {
+        headers: authHeaders()
+    });
+    return res.json();
+}
+
+async function apiGetAllPayments() {
+    const res = await fetch(`${API_URL}/payments/`, {
+        headers: authHeaders()
+    });
+    return res.json();
+}
+
+async function apiUpdatePayment(paymentId, status, transactionCode = null) {
+    const res = await fetch(`${API_URL}/payments/${paymentId}`, {
+        method: "PUT",
+        headers: authHeaders(),
+        body: JSON.stringify({ status: status, transaction_code: transactionCode })
+    });
+    return res.json();
+}
+
+// =====================
+// REVIEWS API
+// =====================
+
+async function apiCreateReview(bookingId, rating, comment) {
+    const res = await fetch(`${API_URL}/reviews/`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ booking_id: bookingId, rating: rating, comment: comment })
+    });
+    return res.json();
+}
+
+async function apiGetRoomReviews(roomId) {
+    const res = await fetch(`${API_URL}/reviews/room/${roomId}`);
+    return res.json();
+}
+
+async function apiGetMyReviews() {
+    const res = await fetch(`${API_URL}/reviews/my-reviews`, {
+        headers: authHeaders()
+    });
+    return res.json();
+}
+
+async function apiUpdateReview(reviewId, rating, comment) {
+    const res = await fetch(`${API_URL}/reviews/${reviewId}`, {
+        method: "PUT",
+        headers: authHeaders(),
+        body: JSON.stringify({ rating: rating, comment: comment })
+    });
+    return res.json();
+}
+
+async function apiDeleteReview(reviewId) {
+    const res = await fetch(`${API_URL}/reviews/${reviewId}`, {
+        method: "DELETE",
+        headers: authHeaders()
+    });
+    return res.json();
+}

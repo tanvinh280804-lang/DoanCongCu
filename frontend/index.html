@@ -113,16 +113,20 @@
             noRooms.style.display = "none";
             grid.innerHTML = rooms.map(room => `
                 <div class="room-card">
-                    <img 
-                        src="${room.image_url || 'images/default-room.jpg'}" 
-                        alt="${room.name}"
-                        onerror="this.src='https://placehold.co/400x200?text=No+Image'"
-                    >
+                    <a href="rooms.html?room_id=${room.id}" style="display:block; text-decoration:none; color:inherit;">
+                        <img 
+                            src="${room.image_url || 'images/default-room.jpg'}" 
+                            alt="${room.name}"
+                            onerror="this.src='https://placehold.co/400x200?text=No+Image'"
+                        >
+                    </a>
                     <div class="room-card-body">
                         <span class="room-badge ${room.is_available ? 'badge-available' : 'badge-unavailable'}">
                             ${room.is_available ? '✅ Còn phòng' : '❌ Hết phòng'}
                         </span>
-                        <div class="room-card-title">${room.name}</div>
+                        <a href="rooms.html?room_id=${room.id}" style="text-decoration:none; color:inherit;">
+                            <div class="room-card-title" style="cursor:pointer;">${room.name}</div>
+                        </a>
                         <div class="room-card-price">
                             ${room.price.toLocaleString('vi-VN')}đ / đêm
                         </div>
@@ -132,6 +136,9 @@
                         <div style="color:#64748b; font-size:0.9rem; margin-bottom:16px;">
                             👥 Sức chứa: ${room.capacity} người
                         </div>
+                        <a href="rooms.html?room_id=${room.id}" class="btn btn-outline btn-full" style="margin-bottom:10px; display:block;">
+                            Xem chi tiết & đánh giá
+                        </a>
                         ${room.is_available 
                             ? `<a href="booking.html?room_id=${room.id}" class="btn btn-primary btn-full">Đặt phòng ngay</a>`
                             : `<button class="btn btn-outline btn-full" disabled>Phòng đã được đặt</button>`

@@ -40,6 +40,10 @@
                 <div class="stat-number" id="stat-pending">-</div>
                 <div class="stat-label">Chờ xác nhận</div>
             </div>
+            <div class="stat-card">
+                <div class="stat-number" id="stat-payments-pending">-</div>
+                <div class="stat-label">Thanh toán chờ xác nhận</div>
+            </div>
         </div>
 
         <!-- QUẢN LÝ PHÒNG -->
@@ -141,6 +145,41 @@
             </div>
         </div>
 
+        <!-- QUẢN LÝ THANH TOÁN -->
+        <div class="table-container">
+            <div class="table-header">
+                <h3>💳 Danh sách thanh toán</h3>
+                <select id="payment-filter" onchange="filterPayments()" style="
+                    padding:8px 16px; 
+                    border:2px solid #e2e8f0; 
+                    border-radius:8px;
+                    font-size:0.9rem;
+                    outline:none;
+                ">
+                    <option value="all">Tất cả</option>
+                    <option value="pending">Chờ xác nhận</option>
+                    <option value="completed">Đã thanh toán</option>
+                    <option value="failed">Thất bại</option>
+                    <option value="refunded">Đã hoàn tiền</option>
+                </select>
+            </div>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Booking</th>
+                            <th>Số tiền</th>
+                            <th>Phương thức</th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="payments-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 
     <!-- MODAL XÁC NHẬN -->
@@ -186,6 +225,7 @@
 
         let allRooms = [];
         let allBookings = [];
+        let allPayments = [];
         let editingRoomId = null;
         let confirmCallback = null;
 
@@ -220,17 +260,19 @@
         // THỐNG KÊ
         // =====================
         async function loadDashboard() {
-            await Promise.all([loadRooms(), loadBookings()]);
+            await Promise.all([loadRooms(), loadBookings(), loadPayments()]);
             updateStats();
         }
 
         function updateStats() {
             const available = allRooms.filter(r => r.is_available).length;
             const pending = allBookings.filter(b => b.status === "pending").length;
+            const paymentsPending = allPayments.filter(p => p.status === "pending").length;
             document.getElementById("stat-rooms").textContent = allRooms.length;
             document.getElementById("stat-available").textContent = available;
             document.getElementById("stat-bookings").textContent = allBookings.length;
             document.getElementById("stat-pending").textContent = pending;
+            document.getElementById("stat-payments-pending").textContent = paymentsPending;
         }
 
         // =====================
@@ -335,35 +377,38 @@
             setLoading("room-submit-btn", false, editingRoomId ? "Cập nhật" : "Lưu phòng");
 
             if (data.id) {
-    showToast(
-        editingRoomId ? "Cập nhật phòng thành công! ✅" : "Thêm phòng mới thành công! 🎉",
-        "success"
-    );
-    hideRoomForm();
-    await loadRooms();
-    updateStats();
-} else {
-    showAlert("room-error", data.detail || "Có lỗi xảy ra", "error");
-}
+                showToast(
+                    editingRoomId ? "Cập nhật phòng thành công! ✅" : "Thêm phòng mới thành công! 🎉",
+                    "success"
+                );
+                hideRoomForm();
+                await loadRooms();
+                updateStats();
+            } else {
+                showAlert("room-error", data.detail || "Có lỗi xảy ra", "error");
+                showToast(data.detail || "Lưu phòng thất bại!", "error");
+            }
         }
 
         async function deleteRoom(roomId) {
-    showConfirmModal(
-        "Xác nhận xóa phòng",
-        "Bạn có chắc muốn xóa phòng này không? Hành động này không thể hoàn tác!",
-        "🗑️",
-        "btn-danger",
-        "Xác nhận xóa",
-        async () => {
-            const data = await apiDeleteRoom(roomId);
-            if (data.message) {
-                showToast("Đã xóa phòng thành công! 🗑️", "success");
-                await loadRooms();
-                updateStats();
-            }
+            showConfirmModal(
+                "Xác nhận xóa phòng",
+                "Bạn có chắc muốn xóa phòng này không? Hành động này không thể hoàn tác!",
+                "🗑️",
+                "btn-danger",
+                "Xác nhận xóa",
+                async () => {
+                    const data = await apiDeleteRoom(roomId);
+                    if (data.message) {
+                        showToast("Đã xóa phòng thành công! 🗑️", "success");
+                        await loadRooms();
+                        updateStats();
+                    } else {
+                        showToast(data.detail || "Xóa phòng thất bại!", "error");
+                    }
+                }
+            );
         }
-    );
-}
 
         // =====================
         // QUẢN LÝ BOOKING
@@ -463,19 +508,135 @@
                 config.btnClass,
                 config.btnText,
                 async () => {
-    const data = await apiUpdateBooking(bookingId, status);
-    if (data.id) {
-        const messages = {
-            "confirmed": "Đã duyệt booking thành công! ✅",
-            "cancelled": "Đã hủy booking thành công!",
-            "checked_out": "Đã xác nhận trả phòng! Phòng đã mở lại 🏠"
-        };
-        showToast(messages[status], status === "cancelled" ? "info" : "success");
-        await loadBookings();
-        await loadRooms();
-        updateStats();
-    }
-}
+                    const data = await apiUpdateBooking(bookingId, status);
+                    if (data.id) {
+                        const messages = {
+                            "confirmed": "Đã duyệt booking thành công! ✅",
+                            "cancelled": "Đã hủy booking thành công!",
+                            "checked_out": "Đã xác nhận trả phòng! Phòng đã mở lại 🏠"
+                        };
+                        showToast(messages[status], status === "cancelled" ? "info" : "success");
+                        await loadBookings();
+                        await loadRooms();
+                        updateStats();
+                    } else {
+                        showToast(data.detail || "Cập nhật booking thất bại!", "error");
+                    }
+                }
+            );
+        }
+
+        // =====================
+        // QUẢN LÝ THANH TOÁN
+        // =====================
+        async function loadPayments() {
+            const payments = await apiGetAllPayments();
+            allPayments = Array.isArray(payments) ? payments : [];
+            renderPaymentsTable(allPayments);
+        }
+
+        function methodLabel(method) {
+            return { cash: "💵 Tiền mặt", bank_transfer: "🏦 Chuyển khoản", momo: "📱 MoMo" }[method] || method;
+        }
+
+        function paymentStatusBadge(status) {
+            const map = {
+                pending: '<span style="color:#f59e0b; font-weight:600;">Chờ xác nhận</span>',
+                completed: '<span style="color:#10b981; font-weight:600;">Đã thanh toán</span>',
+                failed: '<span style="color:#ef4444; font-weight:600;">Thất bại</span>',
+                refunded: '<span style="color:#64748b; font-weight:600;">Đã hoàn tiền</span>'
+            };
+            return map[status] || status;
+        }
+
+        function renderPaymentsTable(payments) {
+            const tbody = document.getElementById("payments-tbody");
+            if (!payments || payments.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align:center; color:#64748b; padding:32px;">
+                            Chưa có thanh toán nào
+                        </td>
+                    </tr>`;
+                return;
+            }
+            tbody.innerHTML = payments.map(p => `
+                <tr>
+                    <td>#${p.id}</td>
+                    <td>Booking #${p.booking_id}</td>
+                    <td>${formatPrice(p.amount)}</td>
+                    <td>${methodLabel(p.method)}</td>
+                    <td>${paymentStatusBadge(p.status)}</td>
+                    <td>
+                        ${p.status === "pending" ? `
+                            <button class="btn btn-success"
+                                style="padding:6px 14px; font-size:0.85rem; margin-right:6px;"
+                                onclick="updatePaymentStatus(${p.id}, 'completed')">
+                                Xác nhận
+                            </button>
+                            <button class="btn btn-danger"
+                                style="padding:6px 14px; font-size:0.85rem;"
+                                onclick="updatePaymentStatus(${p.id}, 'failed')">
+                                Từ chối
+                            </button>
+                        ` : p.status === "completed" ? `
+                            <button class="btn btn-outline"
+                                style="padding:6px 14px; font-size:0.85rem;"
+                                onclick="updatePaymentStatus(${p.id}, 'refunded')">
+                                Hoàn tiền
+                            </button>
+                        ` : `<span style="color:#64748b; font-size:0.85rem;">Đã xử lý</span>`}
+                    </td>
+                </tr>
+            `).join("");
+        }
+
+        function filterPayments() {
+            const filter = document.getElementById("payment-filter").value;
+            if (filter === "all") {
+                renderPaymentsTable(allPayments);
+            } else {
+                renderPaymentsTable(allPayments.filter(p => p.status === filter));
+            }
+        }
+
+        async function updatePaymentStatus(paymentId, status) {
+            const configs = {
+                completed: {
+                    title: "Xác nhận thanh toán",
+                    message: "Xác nhận đã nhận được thanh toán này? Booking liên quan sẽ được duyệt tự động.",
+                    icon: "✅", btnClass: "btn-success", btnText: "Xác nhận đã nhận tiền"
+                },
+                failed: {
+                    title: "Từ chối thanh toán",
+                    message: "Đánh dấu thanh toán này là thất bại?",
+                    icon: "❌", btnClass: "btn-danger", btnText: "Xác nhận từ chối"
+                },
+                refunded: {
+                    title: "Xác nhận hoàn tiền",
+                    message: "Xác nhận đã hoàn tiền cho khách hàng?",
+                    icon: "↩️", btnClass: "btn-outline", btnText: "Xác nhận hoàn tiền"
+                }
+            };
+            const config = configs[status];
+            showConfirmModal(
+                config.title, config.message, config.icon, config.btnClass, config.btnText,
+                async () => {
+                    const data = await apiUpdatePayment(paymentId, status);
+                    if (data.id) {
+                        const messages = {
+                            completed: "Đã xác nhận thanh toán! ✅",
+                            failed: "Đã đánh dấu thất bại",
+                            refunded: "Đã xác nhận hoàn tiền"
+                        };
+                        showToast(messages[status], status === "failed" ? "info" : "success");
+                        await loadPayments();
+                        await loadBookings();
+                        updateStats();
+                    } else {
+                        showToast(data.detail || "Cập nhật thanh toán thất bại! (Có thể route API bị lỗi 404 — kiểm tra Network tab)", "error");
+                    }
+                }
             );
         }
 

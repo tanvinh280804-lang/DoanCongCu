@@ -112,6 +112,7 @@
         updateNavbar();
 
         let currentRoom = null;
+        let isSubmitting = false;
 
         // Lấy room_id từ URL và tải thông tin phòng
         async function loadRoom() {
@@ -145,6 +146,17 @@
             const today = new Date().toISOString().split("T")[0];
             document.getElementById("check-in").min = today;
             document.getElementById("check-out").min = today;
+
+            // Nếu URL có đánh dấu đã đặt thành công (VD sau khi F5), hiện lại thông báo thay vì form
+            const bookedId = getUrlParam("booked_id");
+            if (bookedId) {
+                const bookings = await apiGetMyBookings();
+                const existing = bookings.find(b => b.id == bookedId);
+                if (existing) {
+                    showBookingSuccess(existing, room);
+                    return;
+                }
+            }
         }
 
         // Tính tiền khi chọn ngày
@@ -175,8 +187,56 @@
             summary.style.display = "block";
         }
 
+        // Hiện khối thông báo đặt phòng thành công (dùng chung cho lần đặt mới và khi F5 lại)
+        function showBookingSuccess(bookingData, room) {
+            document.getElementById("book-btn").style.display = "none";
+            document.getElementById("guest-name").disabled = true;
+            document.getElementById("guest-phone").disabled = true;
+            document.getElementById("check-in").disabled = true;
+            document.getElementById("check-out").disabled = true;
+
+            const successBox = document.getElementById("success-msg");
+            successBox.innerHTML = `
+                <div style="text-align:center; padding:10px;">
+                    <div style="font-size:3rem; margin-bottom:12px;">🎉</div>
+                    <div style="font-size:1.2rem; font-weight:700; margin-bottom:8px;">
+                        Đặt phòng thành công!
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        Mã booking: <strong>#${bookingData.id}</strong>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        Phòng: <strong>${room.name}</strong>
+                    </div>
+                    <div style="margin-bottom:8px;">
+                        Check-in: <strong>${formatDate(bookingData.check_in)}</strong> → 
+                        Check-out: <strong>${formatDate(bookingData.check_out)}</strong>
+                    </div>
+                    <div style="font-size:1.1rem; color:#065f46; font-weight:700;">
+                        Tổng tiền: ${formatPrice(bookingData.total_price)}
+                    </div>
+                    <div style="margin-top:12px; font-size:0.9rem; color:#065f46;">
+                        Vui lòng thanh toán để hoàn tất đặt phòng
+                    </div>
+                    <div style="margin-top:16px; display:flex; gap:12px; justify-content:center;">
+                        <a href="payment.html?booking_id=${bookingData.id}" class="btn btn-primary">
+                            💳 Thanh toán ngay
+                        </a>
+                        <a href="index.html" class="btn" style="background:#e2e8f0; color:#334155;">
+                            Để sau
+                        </a>
+                    </div>
+                </div>
+            `;
+            successBox.style.display = "block";
+            successBox.scrollIntoView({ behavior: "smooth" });
+        }
+
         // Xác nhận đặt phòng
         async function submitBooking() {
+            if (isSubmitting) return; // chặn bấm nhiều lần liên tiếp
+            isSubmitting = true;
+
             const guestName = document.getElementById("guest-name").value.trim();
             const guestPhone = document.getElementById("guest-phone").value.trim();
             const checkIn = document.getElementById("check-in").value;
@@ -185,20 +245,24 @@
             // Kiểm tra thông tin
             if (!guestName || !guestPhone || !checkIn || !checkOut) {
                 showAlert("error-msg", "Vui lòng nhập đầy đủ thông tin", "error");
+                isSubmitting = false;
                 return;
             }
 
             if (!validatePhone(guestPhone)) {
                 showAlert("error-msg", "Số điện thoại không hợp lệ (10-11 số)", "error");
+                isSubmitting = false;
                 return;
             }
 
             if (!validateDateRange(checkIn, checkOut)) {
                 showAlert("error-msg", "Ngày check-out phải sau ngày check-in", "error");
+                isSubmitting = false;
                 return;
             }
 
             setLoading("book-btn", true, "Xác nhận đặt phòng");
+            document.getElementById("book-btn").disabled = true;
 
             const data = await apiCreateBooking({
                 room_id: currentRoom.id,
@@ -208,52 +272,18 @@
                 guest_phone: guestPhone
             });
 
-            setLoading("book-btn", false, "Xác nhận đặt phòng");
-
             if (data.id) {
-    // Ẩn form đặt phòng
-    document.getElementById("book-btn").style.display = "none";
-    document.getElementById("guest-name").disabled = true;
-    document.getElementById("guest-phone").disabled = true;
-    document.getElementById("check-in").disabled = true;
-    document.getElementById("check-out").disabled = true;
+                // Đánh dấu URL để nếu F5 lại vẫn nhận ra đã đặt thành công, không hiện form trắng
+                const newUrl = `booking.html?room_id=${currentRoom.id}&booked_id=${data.id}`;
+                window.history.replaceState({}, "", newUrl);
 
-    // Hiện thông báo thành công to rõ ràng
-    const successBox = document.getElementById("success-msg");
-    successBox.innerHTML = `
-        <div style="text-align:center; padding:10px;">
-            <div style="font-size:3rem; margin-bottom:12px;">🎉</div>
-            <div style="font-size:1.2rem; font-weight:700; margin-bottom:8px;">
-                Đặt phòng thành công!
-            </div>
-            <div style="margin-bottom:8px;">
-                Mã booking: <strong>#${data.id}</strong>
-            </div>
-            <div style="margin-bottom:8px;">
-                Phòng: <strong>${currentRoom.name}</strong>
-            </div>
-            <div style="margin-bottom:8px;">
-                Check-in: <strong>${formatDate(data.check_in)}</strong> → 
-                Check-out: <strong>${formatDate(data.check_out)}</strong>
-            </div>
-            <div style="font-size:1.1rem; color:#065f46; font-weight:700;">
-                Tổng tiền: ${formatPrice(data.total_price)}
-            </div>
-            <div style="margin-top:12px; font-size:0.9rem; color:#065f46;">
-                Chúng tôi sẽ liên hệ xác nhận sớm nhất!
-            </div>
-            <a href="index.html" class="btn btn-primary" 
-                style="margin-top:16px; display:inline-block;">
-                Quay lại trang chủ
-            </a>
-        </div>
-    `;
-    successBox.style.display = "block";
-    // Cuộn lên đầu để thấy thông báo
-    successBox.scrollIntoView({ behavior: "smooth" });
-} else {
-    showAlert("error-msg", data.detail || "Đặt phòng thất bại, vui lòng thử lại", "error");
-}
+                showBookingSuccess(data, currentRoom);
+            } else {
+                setLoading("book-btn", false, "Xác nhận đặt phòng");
+                document.getElementById("book-btn").disabled = false;
+                isSubmitting = false;
+                showAlert("error-msg", data.detail || "Đặt phòng thất bại, vui lòng thử lại", "error");
+            }
         }
 
         loadRoom();

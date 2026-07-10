@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thanh toán - Homestay Manager</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar">
+        <a href="index.html" class="navbar-brand">Homestay <span>Manager</span></a>
+        <div class="navbar-links" id="nav-auth"></div>
+    </nav>
+
+    <div class="container" style="max-width:600px">
+
+        <div style="background:white; border-radius:12px; padding:32px; box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);">
+            <h2 style="font-size:1.5rem; font-weight:700; margin-bottom:24px;">Thanh toán đặt phòng</h2>
+
+            <div class="alert alert-error" id="error-msg"></div>
+            <div class="alert alert-success" id="success-msg"></div>
+
+            <!-- Thông tin booking -->
+            <div id="booking-summary" style="
+                background:#f8fafc;
+                border-radius:8px;
+                padding:20px;
+                margin-bottom:24px;
+                display:none;
+            ">
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span style="color:#64748b;">Mã booking:</span>
+                    <span id="sum-booking-id" style="font-weight:600;"></span>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                    <span style="color:#64748b;">Ngày ở:</span>
+                    <span id="sum-dates" style="font-weight:600;"></span>
+                </div>
+                <hr style="border:1px solid #e2e8f0; margin:12px 0;">
+                <div style="display:flex; justify-content:space-between;">
+                    <span style="font-weight:700; font-size:1.1rem;">Số tiền cần thanh toán:</span>
+                    <span id="sum-total" style="font-weight:700; font-size:1.3rem; color:#2563eb;"></span>
+                </div>
+            </div>
+
+            <!-- Chọn phương thức thanh toán -->
+            <div id="payment-form">
+                <div class="form-group">
+                    <label>Chọn phương thức thanh toán</label>
+                    <div style="display:flex; flex-direction:column; gap:10px; margin-top:8px;">
+                        <label style="display:flex; align-items:center; gap:10px; padding:14px; border:2px solid #e2e8f0; border-radius:8px; cursor:pointer;">
+                            <input type="radio" name="method" value="cash" checked>
+                            <span>💵 Tiền mặt (thanh toán khi nhận phòng)</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:10px; padding:14px; border:2px solid #e2e8f0; border-radius:8px; cursor:pointer;">
+                            <input type="radio" name="method" value="bank_transfer">
+                            <span>🏦 Chuyển khoản ngân hàng</span>
+                        </label>
+                        <label style="display:flex; align-items:center; gap:10px; padding:14px; border:2px solid #e2e8f0; border-radius:8px; cursor:pointer;">
+                            <input type="radio" name="method" value="momo">
+                            <span>📱 Ví MoMo</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Thông tin chuyển khoản, hiện khi chọn bank_transfer/momo -->
+                <div id="transfer-info" style="
+                    background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px;
+                    padding:16px; margin:16px 0; display:none; font-size:0.9rem;
+                ">
+                    <p><strong>Ngân hàng:</strong> Vietcombank</p>
+                    <p><strong>Số tài khoản:</strong> 0123456789</p>
+                    <p><strong>Chủ tài khoản:</strong> HOMESTAY MANAGER</p>
+                    <p><strong>Nội dung chuyển khoản:</strong> <span id="transfer-note"></span></p>
+                </div>
+
+                <button class="btn btn-primary btn-full" id="pay-btn" onclick="submitPayment()">
+                    Xác nhận thanh toán
+                </button>
+            </div>
+
+            <a href="my-bookings.html" style="
+                display:block; text-align:center; margin-top:16px;
+                color:#64748b; text-decoration:none;
+            ">← Quay lại danh sách đặt phòng</a>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+    <script>
+        requireLogin();
+        updateNavbar();
+
+        let currentBookingId = null;
+        let isSubmitting = false;
+
+        document.querySelectorAll('input[name="method"]').forEach(radio => {
+            radio.addEventListener("change", () => {
+                const info = document.getElementById("transfer-info");
+                info.style.display = radio.value === "cash" ? "none" : "block";
+            });
+        });
+
+        async function loadBooking() {
+            const bookingId = getUrlParam("booking_id");
+            if (!bookingId) {
+                window.location.href = "my-bookings.html";
+                return;
+            }
+            currentBookingId = bookingId;
+
+            const bookings = await apiGetMyBookings();
+            const booking = bookings.find(b => b.id == bookingId);
+
+            if (!booking) {
+                showAlert("error-msg", "Không tìm thấy booking này", "error");
+                document.getElementById("payment-form").style.display = "none";
+                return;
+            }
+
+            if (booking.status === "cancelled") {
+                showAlert("error-msg", "Booking này đã bị hủy, không thể thanh toán", "error");
+                document.getElementById("payment-form").style.display = "none";
+                return;
+            }
+
+            // Kiểm tra xem booking này đã có payment chưa (tránh tạo trùng khi reload trang)
+            const payments = await apiGetMyPayments();
+            const existingPayment = Array.isArray(payments)
+                ? payments.find(p => p.booking_id == bookingId)
+                : null;
+
+            document.getElementById("sum-booking-id").textContent = "#" + booking.id;
+            document.getElementById("sum-dates").textContent =
+                formatDate(booking.check_in) + " → " + formatDate(booking.check_out);
+            document.getElementById("sum-total").textContent = formatPrice(booking.total_price);
+            document.getElementById("transfer-note").textContent = "DATPHONG " + booking.id;
+            document.getElementById("booking-summary").style.display = "block";
+
+            if (existingPayment) {
+                document.getElementById("payment-form").style.display = "none";
+
+                const statusText = {
+                    pending: "Yêu cầu thanh toán đang chờ xác nhận. Vui lòng đợi admin duyệt.",
+                    completed: "Booking này đã được thanh toán thành công. ✅",
+                    failed: "Lần thanh toán trước đã thất bại.",
+                    refunded: "Booking này đã được hoàn tiền."
+                }[existingPayment.status] || "";
+
+                const boxType = existingPayment.status === "completed" ? "success-msg" : "error-msg";
+                const alertType = existingPayment.status === "completed" ? "success" : "error";
+
+                if (existingPayment.status === "failed") {
+                    // Cho phép thử lại nếu lần trước thất bại
+                    document.getElementById("payment-form").style.display = "block";
+                    showAlert("error-msg", "Lần thanh toán trước thất bại, vui lòng thử lại.", "error");
+                } else {
+                    showAlert(boxType, statusText, alertType);
+                }
+            }
+        }
+
+        async function submitPayment() {
+            if (isSubmitting) return; // chặn spam click
+            isSubmitting = true;
+
+            const method = document.querySelector('input[name="method"]:checked').value;
+
+            setLoading("pay-btn", true, "Xác nhận thanh toán");
+            document.getElementById("pay-btn").disabled = true;
+
+            const data = await apiCreatePayment(currentBookingId, method);
+
+            if (data.id) {
+                document.getElementById("payment-form").style.display = "none";
+                const successBox = document.getElementById("success-msg");
+                successBox.innerHTML = `
+                    <div style="text-align:center; padding:10px;">
+                        <div style="font-size:3rem; margin-bottom:12px;">✅</div>
+                        <div style="font-size:1.2rem; font-weight:700; margin-bottom:8px;">
+                            Đã ghi nhận yêu cầu thanh toán!
+                        </div>
+                        <div style="margin-bottom:8px;">
+                            ${method === "cash"
+                                ? "Vui lòng thanh toán tiền mặt khi nhận phòng."
+                                : "Chúng tôi sẽ xác nhận thanh toán trong thời gian sớm nhất."}
+                        </div>
+                        <a href="my-bookings.html" class="btn btn-primary" style="margin-top:12px; display:inline-block;">
+                            Xem đặt phòng của tôi
+                        </a>
+                    </div>
+                `;
+                successBox.style.display = "block";
+                successBox.scrollIntoView({ behavior: "smooth" });
+            } else {
+                setLoading("pay-btn", false, "Xác nhận thanh toán");
+                document.getElementById("pay-btn").disabled = false;
+                isSubmitting = false;
+                showAlert("error-msg", data.detail || "Thanh toán thất bại, vui lòng thử lại", "error");
+            }
+        }
+
+        loadBooking();
+    </script>
+</body>
+</html>
