@@ -1,7 +1,7 @@
 Homestay Manager
 Cài đặt và chạy
 1. Clone project
-git clone  cd Duan_CS434\homestay-project
+git clone https://github.com/tanvinh280804-lang/DoanCongCu.git cd Duan_CS434\homestay-project
 
 2. Cài thư viện
 cd Duan_CS434\homestay-project\backend python -m venv venv venv\Scripts\activate pip install -r requirements.txt
